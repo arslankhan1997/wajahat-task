@@ -1,0 +1,66 @@
+
+version: "3.8"
+
+services:
+  mgm:
+    image: mysql/mysql-cluster
+    command: ndb_mgmd
+    ports:
+      - "1186:1186"
+    volumes:
+      - ./conf:/etc/mysql-cluster
+    networks:
+      - cluster
+    deploy:
+      placement:
+        constraints: [node.role == manager]
+
+  ndb1:
+    image: mysql/mysql-cluster
+    command: ndbd
+    depends_on:
+      - mgm
+    volumes:
+      - ndb1_data:/var/lib/mysql
+      - ./conf:/etc/mysql-cluster
+    networks:
+      - cluster
+    deploy:
+      replicas: 1
+
+  ndb2:
+    image: mysql/mysql-cluster
+    command: ndbd
+    depends_on:
+      - mgm
+    volumes:
+      - ndb2_data:/var/lib/mysql
+      - ./conf:/etc/mysql-cluster
+    networks:
+      - cluster
+    deploy:
+      replicas: 1
+
+  mysql1:
+    image: mysql:5.7
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+    command: --ndbcluster --ndb-connectstring=mgm
+    depends_on:
+      - mgm
+    ports:
+      - "3306:3306"
+    networks:
+      - cluster
+    volumes:
+      - mysql1_data:/var/lib/mysql
+    deploy:
+      replicas: 1
+
+volumes:
+  ndb1_data:
+  ndb2_data:
+  mysql1_data:
+
+networks:
+  cluster:
